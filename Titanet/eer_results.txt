@@ -1,0 +1,8 @@
+TitaNet-L EER Test Results
+========================
+Dataset: 1000 files, 88 speakers
+Test pairs: 1263 (263 genuine, 1000 impostor)
+EER: 0.1711 (17.11%)
+EER Threshold: 0.3630
+Genuine scores - Mean: 0.5973 ± 0.2507
+Impostor scores - Mean: 0.1977 ± 0.1629

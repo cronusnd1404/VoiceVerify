@@ -1,0 +1,58 @@
+[
+  {
+    "success": true,
+    "test_audio": "/home/edabk408/NgocDat/Titanet/dataset/test/019168.wav",
+    "reference_info": {
+      "path": "reference_voice.pkl",
+      "original_audio": "/home/edabk408/NgocDat/Titanet/dataset/test/001490.wav",
+      "extracted_at": "2025-10-10T14:58:28.493193"
+    },
+    "similarity_score": 0.13597139596458094,
+    "threshold": 0.65,
+    "is_same_speaker": false,
+    "confidence": 0.0,
+    "decision": "DIFFERENT SPEAKER"
+  },
+  {
+    "success": true,
+    "test_audio": "/home/edabk408/NgocDat/Titanet/dataset/test/014289.wav",
+    "reference_info": {
+      "path": "reference_voice.pkl",
+      "original_audio": "/home/edabk408/NgocDat/Titanet/dataset/test/001490.wav",
+      "extracted_at": "2025-10-10T14:58:28.493193"
+    },
+    "similarity_score": 0.014184024982734843,
+    "threshold": 0.65,
+    "is_same_speaker": false,
+    "confidence": 0.0,
+    "decision": "DIFFERENT SPEAKER"
+  },
+  {
+    "success": true,
+    "test_audio": "/home/edabk408/NgocDat/Titanet/dataset/test/012679.wav",
+    "reference_info": {
+      "path": "reference_voice.pkl",
+      "original_audio": "/home/edabk408/NgocDat/Titanet/dataset/test/001490.wav",
+      "extracted_at": "2025-10-10T14:58:28.493193"
+    },
+    "similarity_score": 0.13118699898948108,
+    "threshold": 0.65,
+    "is_same_speaker": false,
+    "confidence": 0.0,
+    "decision": "DIFFERENT SPEAKER"
+  },
+  {
+    "success": true,
+    "test_audio": "/home/edabk408/NgocDat/Titanet/dataset/test/007854.wav",
+    "reference_info": {
+      "path": "reference_voice.pkl",
+      "original_audio": "/home/edabk408/NgocDat/Titanet/dataset/test/001490.wav",
+      "extracted_at": "2025-10-10T14:58:28.493193"
+    },
+    "similarity_score": -0.07397767450848537,
+    "threshold": 0.65,
+    "is_same_speaker": false,
+    "confidence": 0.0,
+    "decision": "DIFFERENT SPEAKER"
+  }
+]

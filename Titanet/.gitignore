@@ -1,0 +1,7 @@
+.venv
+test_titanet_eer.py
+*.wav
+*.npy
+*.pt
+*.ckpt
+*.log

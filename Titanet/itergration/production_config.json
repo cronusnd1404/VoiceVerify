@@ -1,0 +1,18 @@
+{
+    "titanet_model_path": "/home/edabk408/NgocDat/Titanet/itergration/titanet-l.nemo",
+    "use_vad": true,
+    "vad_threshold": 0.5,
+    "vad_min_speech_duration": 250,
+    "vad_max_speech_duration": 30000,
+    "similarity_threshold": 0.65,
+    "min_audio_duration": 1.0,
+    "max_audio_duration": 60.0,
+    "target_sample_rate": 16000,
+    "device": "cuda",
+    "batch_size": 4,
+    "temp_dir": "/tmp/speaker_verification",
+    "enrollment_db_path": "./speaker_enrollments.json",
+    "output_format": "json",
+    "save_embeddings": true,
+    "save_vad_segments": false
+}
