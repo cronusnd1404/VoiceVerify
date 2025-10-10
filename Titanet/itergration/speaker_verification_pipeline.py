@@ -7,7 +7,7 @@ Compatible with existing voice-to-text workflows
 
 import os
 import torch
-import torchaudio
+import soundfile as sf
 import numpy as np
 import json
 import logging
@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Union
 from dataclasses import dataclass
 from datetime import datetime
+from scipy import signal
 
 from nemo.collections.asr.models import EncDecSpeakerLabelModel
 
@@ -112,38 +113,46 @@ class SpeakerVerificationPipeline:
         with open(self.config.enrollment_db_path, 'w') as f:
             json.dump(self.enrollment_db, f, indent=2)
     
-    def preprocess_audio(self, audio_path: str) -> Tuple[torch.Tensor, int]:
+    def preprocess_audio(self, audio_path: str) -> Tuple[np.ndarray, int]:
         """Preprocess audio: load, resample, convert to mono"""
-        waveform, sample_rate = torchaudio.load(audio_path)
+        # Load audio with soundfile
+        waveform, sample_rate = sf.read(audio_path)
         
-        # Convert to mono
-        if waveform.shape[0] > 1:
-            waveform = waveform.mean(dim=0, keepdim=True)
+        # Convert to numpy array if not already
+        if not isinstance(waveform, np.ndarray):
+            waveform = np.array(waveform)
+        
+        # Convert stereo to mono
+        if len(waveform.shape) > 1 and waveform.shape[1] > 1:
+            waveform = np.mean(waveform, axis=1)
+        
+        # Ensure 1D array
+        waveform = waveform.flatten()
         
         # Resample to target sample rate
         if sample_rate != self.config.target_sample_rate:
-            waveform = torchaudio.functional.resample(
-                waveform, sample_rate, self.config.target_sample_rate
-            )
+            # Calculate new length
+            new_length = int(len(waveform) * self.config.target_sample_rate / sample_rate)
+            waveform = signal.resample(waveform, new_length)
             sample_rate = self.config.target_sample_rate
         
         return waveform, sample_rate
     
-    def apply_vad(self, waveform: torch.Tensor, sample_rate: int) -> torch.Tensor:
+    def apply_vad(self, waveform: np.ndarray, sample_rate: int) -> np.ndarray:
         """Apply VAD to extract speech segments"""
         if not self.config.use_vad or self.vad_model is None:
             return waveform
         
         try:
-            # Convert to 1D for VAD
-            audio_1d = waveform.squeeze(0)
+            # Convert numpy to torch tensor for VAD
+            audio_tensor = torch.from_numpy(waveform).float()
             
             # Get speech timestamps
             get_speech_timestamps = self.vad_utils.get('get_speech_timestamps')
             collect_chunks = self.vad_utils.get('collect_chunks')
             
             timestamps = get_speech_timestamps(
-                audio_1d,
+                audio_tensor,
                 self.vad_model,
                 sampling_rate=sample_rate,
                 threshold=self.config.vad_threshold,
@@ -156,13 +165,14 @@ class SpeakerVerificationPipeline:
                 return waveform
             
             # Collect speech chunks
-            speech_audio = collect_chunks(timestamps, audio_1d)
+            speech_audio = collect_chunks(timestamps, audio_tensor)
             
-            if speech_audio is None or speech_audio.numel() == 0:
+            if speech_audio is None or len(speech_audio) == 0:
                 logger.warning("VAD returned empty audio")
                 return waveform
             
-            return speech_audio.unsqueeze(0)
+            # Convert back to numpy
+            return speech_audio.numpy()
             
         except Exception as e:
             logger.warning(f"VAD failed, using original audio: {e}")
@@ -175,7 +185,7 @@ class SpeakerVerificationPipeline:
             waveform, sample_rate = self.preprocess_audio(audio_path)
             
             # Check duration
-            duration = waveform.shape[1] / sample_rate
+            duration = len(waveform) / sample_rate
             if duration < self.config.min_audio_duration:
                 logger.warning(f"Audio too short: {duration:.2f}s < {self.config.min_audio_duration}s")
                 return None
@@ -183,14 +193,14 @@ class SpeakerVerificationPipeline:
             if duration > self.config.max_audio_duration:
                 logger.warning(f"Audio too long: {duration:.2f}s, truncating to {self.config.max_audio_duration}s")
                 max_samples = int(self.config.max_audio_duration * sample_rate)
-                waveform = waveform[:, :max_samples]
+                waveform = waveform[:max_samples]
             
             # Apply VAD
             waveform = self.apply_vad(waveform, sample_rate)
             
             # Save processed audio temporarily
             temp_path = os.path.join(self.config.temp_dir, f"temp_{datetime.now().timestamp()}.wav")
-            torchaudio.save(temp_path, waveform, sample_rate)
+            sf.write(temp_path, waveform, sample_rate)
             
             # Extract embedding using NeMo
             with torch.no_grad():
