@@ -1,10 +1,5 @@
-#!/usr/bin/env python3
-"""
-Production Speaker Verification Pipeline
-Integrates TitaNet-L + Silero VAD v6 for automatic speaker verification
-Compatible with existing voice-to-text workflows
-"""
-
+# Speaker Verification Pipeline using TitaNet-L and Silero VAD v6
+# Integrates with voice-to-text systems for enrollment and verification
 import os
 import torch
 import librosa

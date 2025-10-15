@@ -1,10 +1,4 @@
-#!/usr/bin/env python3
-"""
-Simple Voice Embedding & Comparison Tool
-1. Extract embedding vector from a voice sample
-2. Compare new voices against this reference vector
-"""
-
+"""Simple tool for voice embedding and comparison using TitaNet-L and Silero VAD v6"""
 import json
 import numpy as np
 import sys
