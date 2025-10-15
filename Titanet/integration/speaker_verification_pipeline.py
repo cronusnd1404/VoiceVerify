@@ -7,7 +7,7 @@ Compatible with existing voice-to-text workflows
 
 import os
 import torch
-import soundfile as sf
+import librosa
 import numpy as np
 import json
 import logging
@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Union
 from dataclasses import dataclass
 from datetime import datetime
-from scipy import signal
+from scipy.io import wavfile
 
 from nemo.collections.asr.models import EncDecSpeakerLabelModel
 
@@ -115,26 +115,16 @@ class SpeakerVerificationPipeline:
     
     def preprocess_audio(self, audio_path: str) -> Tuple[np.ndarray, int]:
         """Preprocess audio: load, resample, convert to mono"""
-        # Load audio with soundfile
-        waveform, sample_rate = sf.read(audio_path)
+        # Load audio with librosa (automatically converts to mono and resamples)
+        waveform, sample_rate = librosa.load(
+            audio_path, 
+            sr=self.config.target_sample_rate,  # Automatically resample to target rate
+            mono=True,  # Convert to mono
+            dtype=np.float32
+        )
         
-        # Convert to numpy array if not already
-        if not isinstance(waveform, np.ndarray):
-            waveform = np.array(waveform)
-        
-        # Convert stereo to mono
-        if len(waveform.shape) > 1 and waveform.shape[1] > 1:
-            waveform = np.mean(waveform, axis=1)
-        
-        # Ensure 1D array
+        # Ensure 1D array (librosa.load already returns 1D for mono=True)
         waveform = waveform.flatten()
-        
-        # Resample to target sample rate
-        if sample_rate != self.config.target_sample_rate:
-            # Calculate new length
-            new_length = int(len(waveform) * self.config.target_sample_rate / sample_rate)
-            waveform = signal.resample(waveform, new_length)
-            sample_rate = self.config.target_sample_rate
         
         return waveform, sample_rate
     
@@ -200,7 +190,10 @@ class SpeakerVerificationPipeline:
             
             # Save processed audio temporarily
             temp_path = os.path.join(self.config.temp_dir, f"temp_{datetime.now().timestamp()}.wav")
-            sf.write(temp_path, waveform, sample_rate)
+            # Use scipy.io.wavfile to write audio (no external dependencies needed)
+            # Convert to int16 for WAV format
+            waveform_int16 = (waveform * 32767).astype(np.int16)
+            wavfile.write(temp_path, sample_rate, waveform_int16)
             
             # Extract embedding using NeMo
             with torch.no_grad():
