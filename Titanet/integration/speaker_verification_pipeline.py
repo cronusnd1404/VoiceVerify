@@ -31,7 +31,7 @@ class VerificationConfig:
     vad_max_speech_duration: int = 30000  # ms
     
     # Verification settings
-    similarity_threshold: float = 0.65  # adjustable based on your EER tests
+    similarity_threshold: float = 0.6  # adjustable based on your EER tests
     min_audio_duration: float = 1.0  # seconds
     max_audio_duration: float = 60.0  # seconds
     
