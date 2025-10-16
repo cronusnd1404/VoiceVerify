@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class VerificationConfig:
     """Configuration for speaker verification pipeline"""
     # Model paths
-    titanet_model_path: str = "/home/edabk408/NgocDat/Titanet/titanet-l.nemo"
+    titanet_model_path: str = "/home/edabk/Titanet/integration/titanet-l.nemo"
     
     # VAD settings
     use_vad: bool = True
@@ -41,7 +41,7 @@ class VerificationConfig:
     batch_size: int = 4
     
     # Storage
-    temp_dir: str = "/tmp/speaker_verification"
+    temp_dir: str = "/home/edabk/Titanet/integration/temp"
     enrollment_db_path: str = "./speaker_enrollments.json"
     
     # Output settings

@@ -1,49 +1,20 @@
-#!/usr/bin/env python3
 """
-Jetson-optimized Speaker Verification Pipeline
-Memory and performance optimizations for NVIDIA Jetson devices
+Pipeline đơn giản cho Jetson
 """
 
 import torch
-import gc
-import psutil
-import time
 import os
 import numpy as np
-from typing import Optional, Dict
-from contextlib import contextmanager
+from speaker_verification_pipeline import SpeakerVerificationPipeline
+from jetson_config import get_jetson_config
 
-from speaker_verification_pipeline import SpeakerVerificationPipeline, logger
-from jetson_config import JetsonConfig
-from nemo.collections.asr.models import EncDecSpeakerLabelModel
-
-class JetsonSpeakerPipeline(SpeakerVerificationPipeline):
-    """Jetson-optimized speaker verification pipeline"""
+class JetsonSpeakerPipeline:
+    """Pipeline đơn giản cho Jetson"""
     
-    def __init__(self, config: JetsonConfig):
-        # Set CUDA optimizations before parent initialization
-        if torch.cuda.is_available():
-            torch.backends.cudnn.benchmark = True
-            torch.backends.cudnn.deterministic = False
-            torch.cuda.empty_cache()
-            
-            # Set memory fraction for Jetson
-            if hasattr(torch.cuda, 'set_per_process_memory_fraction'):
-                torch.cuda.set_per_process_memory_fraction(0.7)  # Use 70% of GPU memory
-        
-        # Set CPU threading for Jetson
-        torch.set_num_threads(config.num_threads)
-        os.environ['OMP_NUM_THREADS'] = str(config.num_threads)
-        os.environ['NUMBA_NUM_THREADS'] = str(config.num_threads)
-        
-        self.config = config
-        self.jetson_config = config
-        self.embedding_cache = {}  # Cache for frequent embeddings
-        
-        super().__init__(config)
-        
-        # Post-initialization optimizations
-        self._optimize_for_jetson()
+    def __init__(self):
+        self.config = get_jetson_config()
+        self.pipeline = None
+        self.model = None
     
     def _optimize_for_jetson(self):
         """Apply Jetson-specific optimizations"""

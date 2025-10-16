@@ -1,35 +1,15 @@
 #!/bin/bash
-# Jetson Setup Script for Speaker Verification Pipeline
-# Automated installation and optimization for NVIDIA Jetson devices
 
-set -e  # Exit on error
+# Script setup đơn giản cho Jetson
+echo "=== Jetson Setup Script ==="
 
-echo "🚀 Jetson Speaker Verification Setup Script"
-echo "============================================="
+# Kiểm tra quyền sudo
+if ! sudo -n true 2>/dev/null; then
+    echo "❌ Cần quyền sudo để chạy script này"
+    exit 1
+fi
 
-# Color codes for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Logging function
-log() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
+echo "✅ Bắt đầu setup Jetson..."
 
 # Check if running on Jetson
 check_jetson() {
@@ -184,7 +164,7 @@ setup_models() {
     log "Setting up model directory..."
     
     # Create model directory
-    MODEL_DIR="/home/$(whoami)/models"
+    MODEL_DIR="/home/edabk/Titanet/integration"
     mkdir -p "$MODEL_DIR"
     
     # Copy TitaNet model if it exists
@@ -196,7 +176,7 @@ setup_models() {
     fi
     
     # Create data directory
-    DATA_DIR="/home/$(whoami)/data"
+    DATA_DIR="/home/edabk/Titanet/integration/data"
     mkdir -p "$DATA_DIR"
     success "Model and data directories created"
 }
@@ -315,7 +295,7 @@ main() {
     echo "🎉 Jetson setup completed successfully!"
     echo ""
     echo "Next steps:"
-    echo "1. Copy your TitaNet-L model to /home/$(whoami)/models/"
+    echo "1. Copy your TitaNet-L model to /home/edabk/Titanet/integration/"
     echo "2. Activate the environment: source venv/bin/activate"
     echo "3. Run the pipeline: python jetson_speaker_pipeline.py"
     echo "4. Optional: Enable auto-start: sudo systemctl enable speaker-verification"

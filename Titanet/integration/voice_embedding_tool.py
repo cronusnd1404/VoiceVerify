@@ -175,7 +175,7 @@ def demo_usage():
     tool = VoiceEmbeddingTool()
     
     # Check if we have test audio
-    test_audio_dir = Path("/home/edabk408/NgocDat/Titanet/dataset/test")
+    test_audio_dir = Path("/home/edabk/Titanet/integration/dataset/test")
     if not test_audio_dir.exists():
         print("! Test audio directory not found")
         return
