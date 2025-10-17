@@ -13,8 +13,14 @@ class JetsonMonitor:
     
     def __init__(self):
         self.log_file = "/home/edabk/Titanet/integration/logs/jetson_monitor.json"
+        # Tạo thư mục logs nếu chưa có
+        try:
+            os.makedirs(os.path.dirname(self.log_file), exist_ok=True)
+        except:
+            # Fallback to /tmp nếu không tạo được
+            self.log_file = "/tmp/jetson_monitor.json"
         
-    def get_jetson_info(self) -> Dict:
+    def get_jetson_info(self):
         """Get Jetson hardware information"""
         info = {}
         
@@ -36,13 +42,30 @@ class JetsonMonitor:
         except:
             info['jetpack_version'] = "Unknown"
         
-        # Get CPU info
-        info['cpu_count'] = psutil.cpu_count()
-        info['cpu_freq_mhz'] = psutil.cpu_freq().current if psutil.cpu_freq() else "Unknown"
+        # Get CPU info đơn giản
+        try:
+            with open('/proc/cpuinfo', 'r') as f:
+                lines = f.readlines()
+                cpu_count = sum(1 for line in lines if line.startswith('processor'))
+                info['cpu_count'] = cpu_count
+        except:
+            info['cpu_count'] = "Unknown"
         
-        # Get memory info
-        mem = psutil.virtual_memory()
-        info['total_memory_gb'] = mem.total / (1024**3)
+        info['cpu_freq_mhz'] = "Unknown"
+        
+        # Get memory info đơn giản
+        try:
+            with open('/proc/meminfo', 'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    if line.startswith('MemTotal:'):
+                        mem_kb = int(line.split()[1])
+                        info['total_memory_gb'] = mem_kb / (1024 * 1024)
+                        break
+        except:
+            info['total_memory_gb'] = "Unknown"
+        
+        return info
         
     def get_cpu_usage(self):
         """Lấy thông tin CPU usage đơn giản"""
@@ -165,9 +188,22 @@ def monitor_loop(duration=60):
 if __name__ == "__main__":
     monitor = JetsonMonitor()
     
-    # Test một lần
-    print("=== Test Jetson Monitor ===")
-    monitor.print_status()
+    # Test thông tin Jetson trước
+    print("=== Jetson Hardware Info ===")
+    try:
+        info = monitor.get_jetson_info()
+        print(f"Model: {info.get('model', 'Unknown')}")
+        print(f"JetPack: {info.get('jetpack_version', 'Unknown')}")
+        print(f"CPU Cores: {info.get('cpu_count', 'Unknown')}")
+        print(f"Total Memory: {info.get('total_memory_gb', 'Unknown'):.1f}GB" if isinstance(info.get('total_memory_gb'), (int, float)) else f"Total Memory: {info.get('total_memory_gb', 'Unknown')}")
+    except Exception as e:
+        print(f"Lỗi lấy thông tin Jetson: {e}")
+    
+    print("\n=== Test Jetson Monitor ===")
+    try:
+        monitor.print_status()
+    except Exception as e:
+        print(f"Lỗi monitor: {e}")
     
     # Có thể chạy loop nếu cần
     # monitor_loop(30)  # Monitor 30 giây

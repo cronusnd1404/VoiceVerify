@@ -1,131 +1,149 @@
-# Voice Embedding & Comparison Guide
+# Hướng dẫn sử dụng Voice Embedding Tool với Microphone
 
-## Cách thức hoạt động
+## Tính năng mới: Ghi âm trực tiếp từ microphone
 
-1. **Tạo embedding vector** từ 1 file audio → vector 192 chiều
-2. **Lưu vector** này làm reference
-3. **So sánh các voice mới** với reference vector
-4. **Tính cosine similarity** (0-1, càng cao càng giống)
-5. **Quyết định** based on threshold
+### Cài đặt thư viện cần thiết
 
-## Kết quả thực tế từ test
+```bash
+# Cài đặt sounddevice (khuyến nghị)
+pip3 install sounddevice scipy
 
-### Same Speaker (id00005):
-- **000000.wav vs 000001.wav**: similarity = **0.9675** ✅ (SAME SPEAKER)
-- Threshold 0.85: PASS ✅
-- Confidence: 100%
-
-### Different Speakers:
-- **id00005 vs id00009**: similarity = **0.7947** ⚠️ (tương đối giống)
-- **id00005 vs khác xa**: similarity = **0.6191** ❌ (khác rõ)
-
-## Cách sử dụng
-
-### 1. Basic Usage
-```python
-from voice_embedding_tool import VoiceEmbeddingTool
-
-tool = VoiceEmbeddingTool()
-
-# Tạo reference embedding
-tool.extract_and_save_embedding("reference_voice.wav", "reference.pkl")
-
-# So sánh voice mới
-result = tool.compare_with_reference("test_voice.wav", "reference.pkl", threshold=0.80)
-print(f"Same speaker: {result['is_same_speaker']}")
-print(f"Similarity: {result['similarity_score']:.4f}")
+# Hoặc cài đặt pyaudio (backup option)
+pip3 install pyaudio
 ```
 
-### 2. Interactive Mode
+### Các chế độ sử dụng
+
+#### 1. Test Microphone
+```bash
+python3 voice_embedding_tool.py test_mic
+```
+
+#### 2. Enrollment (Đăng ký giọng nói)
+```bash
+# Chế độ nhanh
+python3 voice_embedding_tool.py enroll
+
+# Chế độ interactive
+python3 voice_embedding_tool.py interactive
+> enroll
+```
+
+#### 3. Verification (Xác thực giọng nói)
+```bash
+# Chế độ nhanh
+python3 voice_embedding_tool.py verify /path/to/reference.pkl
+
+# Chế độ interactive
+python3 voice_embedding_tool.py interactive
+> verify
+```
+
+#### 4. Interactive Mode (Chế độ tương tác)
 ```bash
 python3 voice_embedding_tool.py interactive
-
-# Commands:
-> extract voice1.wav ref1.pkl
-> compare voice2.wav ref1.pkl 0.80
-> batch ref1.pkl /path/to/audio/folder/ 0.80
 ```
 
-### 3. Batch Comparison
-```python
-# So sánh nhiều file cùng lúc
-audio_files = ["voice1.wav", "voice2.wav", "voice3.wav"]
-results = tool.batch_compare(audio_files, "reference.pkl", threshold=0.80)
+### Commands trong Interactive Mode
 
-for result in results:
-    print(f"{result['test_audio']}: {result['similarity_score']:.3f} -> {result['decision']}")
+#### Ghi âm và xử lý
+- `test_mic` - Test microphone
+- `record [duration] [save_audio] [save_embedding]` - Ghi âm và extract embedding
+- `record_compare <reference> [duration] [threshold]` - Ghi âm và so sánh ngay
+
+#### Enrollment/Verification
+- `enroll` - Đăng ký giọng nói mới (guided)
+- `verify` - Xác thực giọng nói (guided)
+
+#### File processing
+- `extract <audio_file> [save_path]` - Extract embedding từ file
+- `compare <test_audio> <reference> [threshold]` - So sánh 2 file
+- `batch <reference> <audio_dir> [threshold]` - So sánh nhiều file
+
+### Workflow thực tế
+
+#### A. Đăng ký người dùng mới
+```bash
+python3 voice_embedding_tool.py interactive
+> enroll
+Enter speaker name: john_doe
+# Hệ thống sẽ hướng dẫn ghi âm 10 giây
+# Kết quả: john_doe_reference.wav và john_doe_reference.pkl
 ```
 
-## Threshold Recommendations
-
-### Based on test results:
-
-- **0.95+**: Rất chắc chắn same speaker (như enroll vs verify)
-- **0.85-0.94**: Có khả năng cao same speaker  
-- **0.70-0.84**: Có thể same speaker, cần xem xét
-- **0.60-0.69**: Khác nhau nhưng có thể giống một phần
-- **< 0.60**: Rõ ràng different speakers
-
-### Recommended settings:
-- **Strict verification**: threshold = 0.85-0.90
-- **Balanced**: threshold = 0.75-0.80  
-- **Lenient**: threshold = 0.65-0.70
-
-## Production Integration
-
-### Với Voice-to-Text System:
-```python
-def enhanced_voice_processing(audio_path, reference_embedding_path):
-    tool = VoiceEmbeddingTool()
-    
-    # Bước 1: Verify speaker
-    verification = tool.compare_with_reference(
-        audio_path, 
-        reference_embedding_path, 
-        threshold=0.80
-    )
-    
-    if verification['is_same_speaker']:
-        # Bước 2: Process voice-to-text
-        transcription = your_voice_to_text_function(audio_path)
-        
-        return {
-            'transcription': transcription,
-            'speaker_verified': True,
-            'similarity_score': verification['similarity_score'],
-            'confidence': verification['confidence']
-        }
-    else:
-        return {
-            'transcription': None,
-            'speaker_verified': False,
-            'error': 'Speaker verification failed'
-        }
+#### B. Xác thực người dùng
+```bash
+python3 voice_embedding_tool.py interactive
+> verify
+Available references:
+  1. john_doe
+  2. jane_smith
+Choose reference: 1
+# Hệ thống sẽ hướng dẫn ghi âm 5 giây và so sánh
 ```
 
-## Files Created
+#### C. Ghi âm và xử lý custom
+```bash
+python3 voice_embedding_tool.py interactive
+> record 8 true true
+# Ghi âm 8 giây, lưu cả audio và embedding
 
-- **reference.pkl**: Embedding vector của reference voice
-- **comparison_results.json**: Chi tiết kết quả so sánh
-- Có thể save format JSON hoặc pickle
+> record_compare john_doe_reference.pkl 5 0.7
+# Ghi âm 5 giây và so sánh với threshold 0.7
+```
 
-## Performance
+### Cấu trúc file được tạo
 
-- **Speed**: ~1-2 giây per comparison (include loading)
-- **Memory**: ~2GB GPU RAM cho TitaNet-L
-- **Accuracy**: Tương đương EER ~15% trên dataset Vietnamese
+```
+/home/edabk/Titanet/integration/
+├── data/
+│   ├── john_doe_reference.wav
+│   ├── john_doe_reference.pkl
+│   ├── jane_smith_reference.wav
+│   └── jane_smith_reference.pkl
+└── temp/
+    ├── recorded_voice_20231016_143022.wav
+    └── recorded_voice_20231016_143022_embedding.pkl
+```
 
-## Lưu ý quan trọng
+### Thông số có thể tuỳ chỉnh
 
-1. **Quality matters**: Audio chất lượng tốt → similarity cao hơn
-2. **Duration**: Audio ít nhất 1-2 giây để có embedding ổn định  
-3. **Same conditions**: Record trong điều kiện tương tự cho kết quả tốt nhất
-4. **Multiple samples**: Có thể tạo nhiều reference embeddings cho 1 người
-5. **Threshold tuning**: Test với data thực của bạn để tìm threshold tối ưu
+- **Duration**: Thời gian ghi âm (giây) - mặc định 5s cho verify, 10s cho enroll
+- **Threshold**: Ngưỡng so sánh (0.0-1.0) - mặc định 0.65
+- **Sample rate**: 16000 Hz (tối ưu cho TitaNet-L)
+- **Format**: WAV, mono channel, 16-bit
 
-## Next Steps
+### Troubleshooting
 
-1. **Test với audio thực** của bạn
-2. **Tune threshold** phù hợp với use case
-3. **Integrate với voice-to-text** system hiện tại
-4. **Set up monitoring** cho production environment
+#### Lỗi microphone không hoạt động
+```bash
+# Kiểm tra microphone
+python3 voice_embedding_tool.py test_mic
+
+# Kiểm tra audio devices
+python3 -c "import sounddevice as sd; print(sd.query_devices())"
+```
+
+#### Lỗi thư viện audio
+```bash
+# Cài đặt lại sounddevice
+pip3 uninstall sounddevice
+pip3 install sounddevice scipy
+
+# Hoặc sử dụng pyaudio
+pip3 install pyaudio
+```
+
+#### Permission issues
+```bash
+# Thêm user vào audio group
+sudo usermod -a -G audio $USER
+# Logout và login lại
+```
+
+### Tips sử dụng hiệu quả
+
+1. **Enrollment**: Ghi âm trong môi trường yên tĩnh, nói rõ ràng
+2. **Verification**: Giữ khoảng cách và âm lượng tương tự khi enrollment
+3. **Threshold**: Giảm threshold nếu bị reject nhiều, tăng nếu có false positive
+4. **Audio quality**: Đảm bảo microphone chất lượng tốt và ít nhiễu
