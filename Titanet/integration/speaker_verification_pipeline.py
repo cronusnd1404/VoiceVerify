@@ -11,7 +11,6 @@ from typing import Dict, List, Tuple, Optional, Union
 from dataclasses import dataclass
 from datetime import datetime
 from scipy.io import wavfile
-
 from nemo.collections.asr.models import EncDecSpeakerLabelModel
 
 # Configure logging
@@ -81,16 +80,30 @@ class SpeakerVerificationPipeline:
             # Load Silero VAD
             if self.config.use_vad:
                 logger.info("Loading Silero VAD v6...")
-                self.vad_model, self.vad_utils = torch.hub.load(
+                # Load Silero VAD - returns model and utils tuple
+                self.vad_model, utils = torch.hub.load(
                     repo_or_dir='snakers4/silero-vad',
                     model='silero_vad',
                     force_reload=False
                 )
+                
+                # Unpack utils tuple: (get_speech_timestamps, collect_chunks, read_audio, VADIterator, collect_chunks)
+                try:
+                    self.get_speech_timestamps, self.collect_chunks, _, _, _ = utils
+                    logger.info("VAD functions extracted successfully")
+                except ValueError as e:
+                    logger.warning(f"Could not unpack VAD utils: {e}, trying alternative approach")
+                    # Fallback: try accessing by index
+                    self.get_speech_timestamps = utils[0] if len(utils) > 0 else None
+                    self.collect_chunks = utils[1] if len(utils) > 1 else None
+                
                 self.vad_model = self.vad_model.to(self.device)
                 logger.info("Silero VAD v6 loaded successfully")
+                logger.info(f"VAD functions loaded: get_speech_timestamps={self.get_speech_timestamps is not None}, collect_chunks={self.collect_chunks is not None}")
             else:
                 self.vad_model = None
-                self.vad_utils = None
+                self.get_speech_timestamps = None
+                self.collect_chunks = None
                 
         except Exception as e:
             logger.error(f"Model loading failed: {e}")
@@ -132,11 +145,12 @@ class SpeakerVerificationPipeline:
             # Convert numpy to torch tensor for VAD
             audio_tensor = torch.from_numpy(waveform).float()
             
-            # Get speech timestamps
-            get_speech_timestamps = self.vad_utils.get('get_speech_timestamps')
-            collect_chunks = self.vad_utils.get('collect_chunks')
+            # Check if VAD functions are available
+            if self.get_speech_timestamps is None:
+                logger.warning("VAD functions not available, using full audio")
+                return waveform
             
-            timestamps = get_speech_timestamps(
+            timestamps = self.get_speech_timestamps(
                 audio_tensor,
                 self.vad_model,
                 sampling_rate=sample_rate,
@@ -150,7 +164,24 @@ class SpeakerVerificationPipeline:
                 return waveform
             
             # Collect speech chunks
-            speech_audio = collect_chunks(timestamps, audio_tensor)
+            if self.collect_chunks is not None:
+                speech_audio = self.collect_chunks(timestamps, audio_tensor)
+            else:
+                # Fallback: manually extract chunks
+                speech_audio = []
+                for ts in timestamps:
+                    # Silero VAD returns timestamps in samples, not milliseconds
+                    if isinstance(ts, dict):
+                        start_sample = int(ts['start'])
+                        end_sample = int(ts['end'])
+                    else:
+                        # Handle alternative timestamp format
+                        start_sample = int(ts.start) if hasattr(ts, 'start') else 0
+                        end_sample = int(ts.end) if hasattr(ts, 'end') else len(audio_tensor)
+                    
+                    chunk = audio_tensor[start_sample:end_sample]
+                    speech_audio.append(chunk)
+                speech_audio = torch.cat(speech_audio) if speech_audio else audio_tensor
             
             if speech_audio is None or len(speech_audio) == 0:
                 logger.warning("VAD returned empty audio")
@@ -420,7 +451,11 @@ class RealTimeSpeakerRecognition:
         try:
             audio_tensor = torch.from_numpy(audio_chunk).float()
             
-            get_speech_timestamps = self.pipeline.vad_utils.get('get_speech_timestamps')
+            get_speech_timestamps = self.pipeline.get_speech_timestamps
+            
+            if get_speech_timestamps is None:
+                logger.warning("VAD functions not available, using full audio chunk")
+                return [audio_chunk]  # Return the audio chunk directly
             
             timestamps = get_speech_timestamps(
                 audio_tensor,
